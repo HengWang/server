@@ -18184,20 +18184,25 @@ static MYSQL_SYSVAR_BOOL(use_trim, srv_use_trim,
   "Use trim. Default FALSE.",
   NULL, NULL, FALSE);
 
-static MYSQL_SYSVAR_LONG(compression_algorithm, innodb_compression_algorithm,
-  PLUGIN_VAR_OPCMDARG,
-  "Compression algorithm used on page compression. 1 for zlib, 2 for lz3, 3 for lzo",
-  NULL, NULL,
-  PAGE_ZLIB_ALGORITHM,
-  0,
-#if defined(HAVE_LZO) && defined(HAVE_LZ4)
-  PAGE_ALGORITHM_LAST,
-#elif defined(HAVE_LZ4) && !defined(HAVE_LZO)
-  PAGE_LZ4_ALGORITHM,
+
+#if defined(HAVE_LZO)
+#define default_compression_algorithm  PAGE_LZO_ALGORITHM
+#elif defined(HAVE_LZ4)
+#define default_compression_algorithm PAGE_LZ4_ALGORITHM
 #else
-  PAGE_ZLIB_ALGORITHM,
+#define default_compression_algorithm PAGE_ZLIB_ALGORITHM
 #endif
-  0);
+const char *page_compression_algorithms[]= { "none", "zlib", "lz4", "lzo", NullS };
+TYPELIB page_compression_algorithms_typelib=
+{
+  array_elements(page_compression_algorithms) - 1, 0,
+  page_compression_algorithms, 0
+};
+static MYSQL_SYSVAR_ENUM(compression_algorithm, innodb_compression_algorithm,
+  PLUGIN_VAR_OPCMDARG,
+  "Compression algorithm used on page compression. none, zlib, lz4, or lzo",
+  NULL, NULL, default_compression_algorithm,
+  &page_compression_algorithms_typelib);
 
 static MYSQL_SYSVAR_LONG(mtflush_threads, srv_mtflush_threads,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_READONLY,
